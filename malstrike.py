@@ -729,3 +729,18 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ============================================================
+# MALSTRIKE - PROJECT NOTES
+# ============================================================
+# Modular malware behaviour simulation framework.
+# Implements isolated command-and-control simulation.
+# Demonstrates persistence and ransomware-like behaviours.
+# Performs file fingerprinting and entropy analysis.
+# Simulates data staging and chunk-based exfiltration.
+# Includes HMAC-based command authentication.
+# Implements hash-chain event log integrity verification.
+# Detects suspicious behavioural patterns through event correlation.
+# Generates structured JSON reports for security analysis.
+# Designed exclusively for controlled cybersecurity research.
+# ============================================================
