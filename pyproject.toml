@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rootrot"
+version = "1.0.0"
+description = "An isolated malware-behaviour simulation and detection lab"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+rootrot = "rootrot.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["rootrot*"]
+exclude = ["tests*"]
