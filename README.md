@@ -307,20 +307,14 @@ The project is not an antivirus product, endpoint detection platform, or deploya
 
 ## roadmap
 
-- [x] modular Python package and command-line entry point
-- [x] temporary workspace with synthetic demo files
-- [x] file inventory, SHA-256 fingerprinting, and entropy calculation
-- [x] persistence behaviour simulation
-- [x] authenticated in-memory C2 task simulation
-- [x] non-destructive ransomware targeting dry run
-- [x] synthetic data chunking and event logging
-- [x] hash-chain integrity verification
-- [x] rule-based behavioural detection
-- [x] unit and integration test suite
-- [ ] configurable simulation scenarios
-- [ ] broader detection rules and additional edge-case tests
-- [ ] optional structured report export
-- [ ] automated test workflow with GitHub Actions
+The current version keeps the demo deliberately small: one temporary workspace, a handful of behaviour simulators, an in-memory event trail, and a set of deterministic detection rules.
+
+A few areas worth building on next:
+
+- **Configurable runs:** choose which simulations execute and adjust the synthetic inputs without editing the source.
+- **More detection coverage:** add rules for additional event combinations, then test missing, repeated, and out-of-order events.
+- **Report export:** add an explicit option to write the JSON report to a chosen path while keeping terminal output as the default.
+- **Automated checks:** run the existing `unittest` suite on pushes and pull requests with GitHub Actions.
 
 ## references
 
@@ -334,8 +328,7 @@ The project is not an antivirus product, endpoint detection platform, or deploya
 
 ## license
 
-This project is licensed under the MIT License.
-See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
