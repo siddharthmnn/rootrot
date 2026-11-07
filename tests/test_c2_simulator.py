@@ -39,51 +39,31 @@ class test_c2_simulator(unittest.TestCase):
 
     def test_dispatched_command_has_a_valid_signature(self):
         item = self.controller.dispatch("status")
-
         self.assertTrue(self.controller.verify(item))
 
     def test_changed_command_arguments_fail_signature_check(self):
         item = self.controller.dispatch("status")
         changed_item = replace(item, arguments={"unexpected": True})
-
         self.assertFalse(self.controller.verify(changed_item))
 
     def test_agent_handles_status_task(self):
         self.controller.dispatch("status")
-
         results = list(self.agent.poll())
-
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["action"], "status")
-        self.assertEqual(
-            results[0]["result"]["agent_id"],
-            "test-agent",
-        )
-        self.assertEqual(
-            results[0]["result"]["state"],
-            "simulated_online",
-        )
+        self.assertEqual(results[0]["result"]["agent_id"], "test-agent")
+        self.assertEqual(results[0]["result"]["state"], "simulated_online")
 
     def test_agent_hashes_only_a_file_in_the_workspace(self):
-        self.controller.dispatch(
-            "hash_file",
-            {"path": "notes.txt"},
-        )
-
+        self.controller.dispatch("hash_file", {"path": "notes.txt"})
         results = list(self.agent.poll())
-
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["action"], "hash_file")
         self.assertEqual(results[0]["result"]["name"], "notes.txt")
 
     def test_agent_rejects_a_path_outside_the_workspace(self):
-        self.controller.dispatch(
-            "hash_file",
-            {"path": "../outside.txt"},
-        )
-
         with self.assertRaises(ValueError):
-            list(self.agent.poll())
+            self.controller.dispatch("hash_file", {"path": "../outside.txt"})
 
 
 if __name__ == "__main__":
