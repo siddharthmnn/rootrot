@@ -307,14 +307,14 @@ The project is not an antivirus product, endpoint detection platform, or deploya
 
 ## roadmap
 
-The current version keeps the demo deliberately small: one temporary workspace, a handful of behaviour simulators, an in-memory event trail, and a set of deterministic detection rules.
+The current version is intentionally small and local. It runs a fixed set of simulations, records the events they produce, and prints a report.
 
-A few areas worth building on next:
+The next useful improvements are mostly about making the demo easier to explore and the results easier to inspect:
 
-- **Configurable runs:** choose which simulations execute and adjust the synthetic inputs without editing the source.
-- **More detection coverage:** add rules for additional event combinations, then test missing, repeated, and out-of-order events.
-- **Report export:** add an explicit option to write the JSON report to a chosen path while keeping terminal output as the default.
-- **Automated checks:** run the existing `unittest` suite on pushes and pull requests with GitHub Actions.
+- **choose what to run:** let a user enable or skip individual simulations and provide different synthetic inputs.
+- **make detection less brittle:** add rules for more event combinations and cover missing, repeated, and out-of-order events in the tests.
+- **save reports explicitly:** add an optional output path for the JSON report while keeping terminal output as the default.
+- **run checks automatically:** use GitHub Actions to run the existing test suite on pushes and pull requests.
 
 ## references
 
