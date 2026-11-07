@@ -4,23 +4,29 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+import secrets
 from typing import Any
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+from .core.schemas import event_record, utc_now
 
 
 def _canonical(data: dict[str, Any]) -> bytes:
-    # using a stable json format means the same event always hashes the same way
-    return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    # stable json formatting keeps the hash independent of dictionary order
+    return json.dumps(
+        data,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
 
 
 class event_logger:
-    """store events in memory and link each one to the event before it."""
+    """store structured events in memory and link each one to the event before it."""
 
-    def __init__(self) -> None:
+    def __init__(self, run_id: str | None = None) -> None:
+        self.run_id = run_id or secrets.token_hex(12)
+        if not isinstance(self.run_id, str) or not self.run_id.strip():
+            raise ValueError("run_id must be a non-empty string")
         self.events: list[dict[str, Any]] = []
         self._previous_hash = "0" * 64
 
@@ -31,17 +37,28 @@ class event_logger:
         severity: str = "info",
         **details: Any,
     ) -> dict[str, Any]:
-        record = {
-            "timestamp": _now(),
-            "source": source,
-            "action": action,
-            "severity": severity,
-            "details": details,
-            "previous_hash": self._previous_hash,
-        }
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError("event source must be a non-empty string")
+        if not isinstance(action, str) or not action.strip():
+            raise ValueError("event action must be a non-empty string")
 
-        event_hash = hashlib.sha256(_canonical(record)).hexdigest()
-        record["event_hash"] = event_hash
+        payload = event_record(
+            run_id=self.run_id,
+            sequence=len(self.events) + 1,
+            timestamp=utc_now(),
+            source=source,
+            action=action,
+            severity=severity,
+            details=dict(details),
+            previous_hash=self._previous_hash,
+            event_hash="0" * 64,
+        )
+        unsigned = payload.unsigned_dict()
+        event_hash = hashlib.sha256(_canonical(unsigned)).hexdigest()
+        record = {**unsigned, "event_hash": event_hash}
+
+        # validate the exact shape before it becomes part of the event trail
+        event_record.from_mapping(record)
         self.events.append(record)
         self._previous_hash = event_hash
         return record
@@ -49,21 +66,20 @@ class event_logger:
     def verify_integrity(self) -> bool:
         previous_hash = "0" * 64
 
-        for event in self.events:
-            # the current hash is left out while we recalculate it
-            record = {
-                key: value
-                for key, value in event.items()
-                if key != "event_hash"
-            }
-
-            if record.get("previous_hash") != previous_hash:
+        for expected_sequence, raw_event in enumerate(self.events, start=1):
+            try:
+                event = event_record.from_mapping(raw_event)
+            except (TypeError, ValueError):
                 return False
 
-            expected = hashlib.sha256(_canonical(record)).hexdigest()
-            if expected != event.get("event_hash"):
+            if event.run_id != self.run_id or event.sequence != expected_sequence:
+                return False
+            if event.previous_hash != previous_hash:
                 return False
 
-            previous_hash = expected
+            expected_hash = hashlib.sha256(_canonical(event.unsigned_dict())).hexdigest()
+            if not secrets.compare_digest(expected_hash, event.event_hash):
+                return False
+            previous_hash = expected_hash
 
         return True
