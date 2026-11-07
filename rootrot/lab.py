@@ -25,16 +25,12 @@ from .staging_simulator import staging_simulator
 def _make_demo_files(workspace: Path) -> None:
     demo = workspace / "demo_files"
     demo.mkdir(parents=True)
-
     (demo / "notes.txt").write_text(
         "synthetic malware research notes\nno personal data here\n",
         encoding="utf-8",
     )
     (demo / "settings.json").write_text(
-        json.dumps(
-            {"environment": "isolated_lab", "agent": "demo_agent"},
-            indent=2,
-        ),
+        json.dumps({"environment": "isolated_lab", "agent": "demo_agent"}, indent=2),
         encoding="utf-8",
     )
     (demo / "sample.csv").write_text(
@@ -55,58 +51,83 @@ def _build_registry() -> simulation_registry:
         return scanner.inventory()
 
     def run_persistence(context: run_context) -> list[dict[str, Any]]:
-        return persistence_simulator(context.logger).run()
+        return persistence_simulator(context.logger).run(
+            platform=context.config.persistence_platform,
+        )
 
     def run_c2(context: run_context) -> list[dict[str, Any]]:
         secret = secrets.token_bytes(32)
-        controller = c2_controller(secret, context.logger)
+        controller = c2_controller(
+            secret,
+            context.logger,
+            command_ttl_seconds=context.config.c2_command_ttl_seconds,
+            max_queue_size=context.config.c2_queue_limit,
+        )
         agent = c2_agent(
             "demo-agent-01",
             context.workspace,
             controller,
             context.logger,
         )
-
-        # these are local log events, not network heartbeats
         for _ in range(context.config.beacon_count):
             controller.beacon(agent.agent_id)
-
         controller.dispatch("status")
         controller.dispatch("inventory")
-        controller.dispatch(
-            "hash_file",
-            {"path": "demo_files/notes.txt"},
-        )
+        controller.dispatch("hash_file", {"path": "demo_files/notes.txt"})
         return list(agent.poll())
 
     def run_ransomware(context: run_context) -> dict[str, Any]:
-        return ransomware_simulator(context.workspace, context.logger).dry_run()
+        simulator = ransomware_simulator(
+            context.workspace,
+            context.logger,
+            target_extensions=context.config.ransomware_target_extensions,
+            exclude_paths=context.config.ransomware_excluded_paths,
+        )
+        return simulator.dry_run()
 
     def run_staging(context: run_context) -> dict[str, Any]:
         simulator = staging_simulator(
             context.logger,
             chunk_size=context.config.staging_chunk_size,
+            max_data_size=context.config.max_staging_bytes,
         )
         return simulator.run(b"synthetic lab data " * 80)
 
-    registry.register("file_intel", run_file_intel, "inspect synthetic files in the temporary workspace")
-    registry.register("persistence", run_persistence, "record hypothetical persistence actions")
-    registry.register("c2", run_c2, "run authenticated tasks through an in-memory queue")
-    registry.register("ransomware", run_ransomware, "identify file candidates without changing them")
-    registry.register("staging", run_staging, "chunk synthetic bytes in memory")
+    registry.register(
+        "file_intel",
+        run_file_intel,
+        "inspect synthetic files in the temporary workspace",
+    )
+    registry.register(
+        "persistence",
+        run_persistence,
+        "record hypothetical persistence actions",
+    )
+    registry.register(
+        "c2",
+        run_c2,
+        "run authenticated tasks through an in-memory queue",
+    )
+    registry.register(
+        "ransomware",
+        run_ransomware,
+        "identify file candidates without changing them",
+    )
+    registry.register(
+        "staging",
+        run_staging,
+        "chunk synthetic data in memory",
+    )
     return registry
 
 
 def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
     active_config = config or rootrot_config()
     logger = event_logger()
-
     with tempfile.TemporaryDirectory(prefix="rootrot_") as temp_dir:
         workspace = Path(temp_dir).resolve()
         _make_demo_files(workspace)
         context = run_context.create(workspace, active_config, logger)
-
-        # the registry keeps module wiring out of the run loop
         outcomes = simulation_orchestrator(context, _build_registry()).run()
         outputs = {name: result.output for name, result in outcomes.items()}
         findings = (
@@ -133,8 +154,6 @@ def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
                 "data_transmitted": False,
             },
         }
-
-        # keep the original report keys so existing users and tests keep working
         output_keys = {
             "file_intel": "file_inventory",
             "persistence": "persistence_simulation",
@@ -145,5 +164,4 @@ def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
         for module, report_key in output_keys.items():
             if module in outputs:
                 report[report_key] = outputs[module]
-
         return report
