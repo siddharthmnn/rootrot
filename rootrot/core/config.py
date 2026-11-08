@@ -11,6 +11,7 @@ from typing import Any, Mapping
 
 
 _module_name = re.compile(r"^[a-z][a-z0-9_]*$")
+_rule_name = re.compile(r"^[a-z0-9_.-]+$")
 profile_modules = {
     "basic": ("file_intel", "persistence", "ransomware"),
     "file_analysis": ("file_intel",),
@@ -40,6 +41,9 @@ class rootrot_config:
     c2_queue_limit: int = 64
     ransomware_target_extensions: tuple[str, ...] = _default_extensions
     ransomware_excluded_paths: tuple[str, ...] = ()
+    detection_min_severity: str = "low"
+    detection_excluded_rules: tuple[str, ...] = ()
+    detection_correlation_window_seconds: int = 120
 
     def __post_init__(self) -> None:
         if not isinstance(self.profile, str) or self.profile not in (*profile_modules, "custom"):
@@ -68,12 +72,16 @@ class rootrot_config:
                 object.__setattr__(self, "profile", "custom")
 
         object.__setattr__(self, "enabled_modules", tuple(modules))
-
         self._validate_positive_int("file_max_size", self.file_max_size, 100_000_000)
         self._validate_positive_int("staging_chunk_size", self.staging_chunk_size, 1_048_576)
         self._validate_positive_int("beacon_count", self.beacon_count, 100)
         self._validate_positive_int("max_staging_bytes", self.max_staging_bytes, 10_000_000)
         self._validate_positive_int("c2_queue_limit", self.c2_queue_limit, 1024)
+        self._validate_positive_int(
+            "detection_correlation_window_seconds",
+            self.detection_correlation_window_seconds,
+            3600,
+        )
 
         if (
             isinstance(self.c2_command_ttl_seconds, bool)
@@ -88,6 +96,27 @@ class rootrot_config:
             "cross_platform", "windows", "linux", "macos"
         }:
             raise configuration_error("persistence_platform must be cross_platform, windows, linux, or macos")
+
+        if not isinstance(self.detection_min_severity, str) or self.detection_min_severity not in {
+            "info", "low", "medium", "high", "critical"
+        }:
+            raise configuration_error("detection_min_severity must be info, low, medium, high, or critical")
+
+        raw_detection_exclusions = self.detection_excluded_rules
+        if isinstance(raw_detection_exclusions, (str, bytes)):
+            raise configuration_error("detection_excluded_rules must be a list")
+        try:
+            detection_exclusions = tuple(raw_detection_exclusions)
+        except TypeError as exc:
+            raise configuration_error("detection_excluded_rules must be a list") from exc
+        if any(
+            not isinstance(rule, str) or not _rule_name.fullmatch(rule)
+            for rule in detection_exclusions
+        ):
+            raise configuration_error("detection_excluded_rules contains an invalid rule name or id")
+        if len(set(detection_exclusions)) != len(detection_exclusions):
+            raise configuration_error("detection_excluded_rules contains duplicates")
+        object.__setattr__(self, "detection_excluded_rules", detection_exclusions)
 
         raw_extensions = self.ransomware_target_extensions
         if isinstance(raw_extensions, (str, bytes)):
@@ -150,6 +179,8 @@ class rootrot_config:
             "staging_chunk_size", "beacon_count", "detection_enabled",
             "max_staging_bytes", "persistence_platform", "c2_command_ttl_seconds",
             "c2_queue_limit", "ransomware_target_extensions", "ransomware_excluded_paths",
+            "detection_min_severity", "detection_excluded_rules",
+            "detection_correlation_window_seconds",
         }
         unknown = sorted(set(values) - allowed)
         if unknown:
@@ -164,10 +195,13 @@ class rootrot_config:
             raise configuration_error("enabled_modules must be a list of names")
         raw_extensions = values.get("ransomware_target_extensions", _default_extensions)
         raw_exclusions = values.get("ransomware_excluded_paths", ())
+        raw_detection_exclusions = values.get("detection_excluded_rules", ())
         if not isinstance(raw_extensions, (list, tuple)):
             raise configuration_error("ransomware_target_extensions must be a list")
         if not isinstance(raw_exclusions, (list, tuple)):
             raise configuration_error("ransomware_excluded_paths must be a list")
+        if not isinstance(raw_detection_exclusions, (list, tuple)):
+            raise configuration_error("detection_excluded_rules must be a list")
 
         try:
             return cls(
@@ -183,6 +217,11 @@ class rootrot_config:
                 c2_queue_limit=values.get("c2_queue_limit", 64),
                 ransomware_target_extensions=tuple(raw_extensions),
                 ransomware_excluded_paths=tuple(raw_exclusions),
+                detection_min_severity=values.get("detection_min_severity", "low"),
+                detection_excluded_rules=tuple(raw_detection_exclusions),
+                detection_correlation_window_seconds=values.get(
+                    "detection_correlation_window_seconds", 120
+                ),
             )
         except TypeError as exc:
             raise configuration_error("configuration contains an invalid value") from exc
@@ -215,4 +254,7 @@ class rootrot_config:
             "c2_queue_limit": self.c2_queue_limit,
             "ransomware_target_extensions": list(self.ransomware_target_extensions),
             "ransomware_excluded_paths": list(self.ransomware_excluded_paths),
+            "detection_min_severity": self.detection_min_severity,
+            "detection_excluded_rules": list(self.detection_excluded_rules),
+            "detection_correlation_window_seconds": self.detection_correlation_window_seconds,
         }

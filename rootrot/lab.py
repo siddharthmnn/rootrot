@@ -130,11 +130,19 @@ def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
         context = run_context.create(workspace, active_config, logger)
         outcomes = simulation_orchestrator(context, _build_registry()).run()
         outputs = {name: result.output for name, result in outcomes.items()}
-        findings = (
-            detection_engine(logger).analyze()
-            if active_config.detection_enabled
-            else []
-        )
+
+        if active_config.detection_enabled:
+            detector = detection_engine(
+                logger,
+                minimum_severity=active_config.detection_min_severity,
+                excluded_rules=active_config.detection_excluded_rules,
+                correlation_window_seconds=active_config.detection_correlation_window_seconds,
+            )
+            findings = detector.analyze()
+            available_rules = detector.list_rules()
+        else:
+            findings = []
+            available_rules = []
 
         report: dict[str, Any] = {
             "project": "rootrot",
@@ -143,6 +151,7 @@ def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
             "profile": active_config.profile,
             "enabled_modules": list(active_config.enabled_modules or ()),
             "detections": findings,
+            "detection_rules": available_rules,
             "event_count": len(logger.events),
             "event_log_integrity": logger.verify_integrity(),
             "safety": {
