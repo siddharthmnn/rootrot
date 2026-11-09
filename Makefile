@@ -35,6 +35,7 @@ coverage:
 	coverage html
 
 build:
+	rm -rf build dist
 	$(PYTHON) -m build
 
 verify-dist:
