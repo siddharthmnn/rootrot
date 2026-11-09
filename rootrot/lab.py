@@ -20,6 +20,7 @@ from .file_intel import file_intel
 from .persistence_simulator import persistence_simulator
 from .ransomware_simulator import ransomware_simulator
 from .staging_simulator import staging_simulator
+from .telemetry.summary import build_forensic_summary
 
 
 def _make_demo_files(workspace: Path) -> None:
@@ -144,6 +145,10 @@ def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
             findings = []
             available_rules = []
 
+        # keep a snapshot so the report is useful after the temporary workspace is gone
+        events = [dict(event) for event in logger.events]
+        forensic_summary = build_forensic_summary(events, findings)
+
         report: dict[str, Any] = {
             "project": "rootrot",
             "version": __version__,
@@ -152,8 +157,10 @@ def run_lab(config: rootrot_config | None = None) -> dict[str, Any]:
             "enabled_modules": list(active_config.enabled_modules or ()),
             "detections": findings,
             "detection_rules": available_rules,
-            "event_count": len(logger.events),
-            "event_log_integrity": logger.verify_integrity(),
+            "events": events,
+            "forensic_summary": forensic_summary,
+            "event_count": len(events),
+            "event_log_integrity": forensic_summary["integrity"]["valid"],
             "safety": {
                 "temporary_workspace_only": True,
                 "network_connections": False,
