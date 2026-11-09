@@ -1,4 +1,4 @@
-"""checks that the full lab still runs from start to finish."""
+"""checks that the full lab runs and returns its event evidence."""
 
 import unittest
 
@@ -21,6 +21,9 @@ class test_rootrot_lab(unittest.TestCase):
             "ransomware_simulation",
             "staging_simulation",
             "detections",
+            "detection_rules",
+            "events",
+            "forensic_summary",
             "event_count",
             "event_log_integrity",
             "safety",
@@ -44,6 +47,8 @@ class test_rootrot_lab(unittest.TestCase):
         report = run_lab()
         self.assertTrue(report["event_log_integrity"])
         self.assertGreater(report["event_count"], 0)
+        self.assertEqual(report["event_count"], len(report["events"]))
+        self.assertTrue(report["forensic_summary"]["integrity"]["valid"])
 
     def test_c2_and_file_inventory_examples_run(self):
         report = run_lab()
@@ -73,6 +78,7 @@ class test_rootrot_lab(unittest.TestCase):
         self.assertIn("file_inventory", report)
         self.assertNotIn("c2_simulation", report)
         self.assertEqual(report["detections"], [])
+        self.assertEqual(report["event_count"], len(report["events"]))
 
     def test_configurable_chunk_size_reaches_staging_module(self):
         report = run_lab(rootrot_config(staging_chunk_size=64))
