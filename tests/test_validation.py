@@ -3,7 +3,6 @@
 import unittest
 
 from rootrot.detection_engine.rules import build_default_rules
-from rootrot.detection_engine.rules import build_default_rules
 from rootrot.telemetry.integrity import verify_event_chain
 from rootrot.validation.metrics import evaluate_detection_scenarios
 from rootrot.validation.mutations import (
