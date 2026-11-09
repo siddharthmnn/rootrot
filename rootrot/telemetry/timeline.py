@@ -29,7 +29,7 @@ def build_timeline(events: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
         if not isinstance(event, Mapping):
             raise ValueError(f"event at position {index} is not an object")
         sequence = event.get("sequence", index)
-        if isinstance(sequence, bool) or not isinstance(sequence, int):
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1:
             raise ValueError(f"event at position {index} has an invalid sequence")
         records.append((_timestamp(event), sequence, event))
 

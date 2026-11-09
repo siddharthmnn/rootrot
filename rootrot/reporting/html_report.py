@@ -85,7 +85,12 @@ def render_html_report(report: Mapping[str, Any], max_events: int = 500) -> str:
     integrity = summary.get("integrity", {})
     if not isinstance(integrity, Mapping):
         integrity = {}
-    integrity_label = "valid" if integrity.get("valid") else "not verified"
+    if integrity.get("valid") is True:
+        integrity_label = "valid"
+    elif integrity.get("valid") is False:
+        integrity_label = "invalid"
+    else:
+        integrity_label = "not verified"
 
     omitted = max(0, len(events) - max_events)
     omitted_note = (

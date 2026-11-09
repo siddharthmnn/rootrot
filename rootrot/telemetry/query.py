@@ -47,7 +47,10 @@ def filter_events(
     if severities is not None:
         if isinstance(severities, (str, bytes)):
             raise ValueError("severities must be an iterable of severity names")
-        selected_severities = set(severities)
+        try:
+            selected_severities = set(severities)
+        except TypeError as exc:
+            raise ValueError("severity names must be hashable strings") from exc
         if any(not isinstance(item, str) or not item for item in selected_severities):
             raise ValueError("severity names must be non-empty strings")
 

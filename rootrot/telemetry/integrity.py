@@ -44,6 +44,8 @@ class integrity_checkpoint:
     def from_mapping(cls, value: Mapping[str, Any]) -> "integrity_checkpoint":
         if not isinstance(value, Mapping):
             raise ValueError("checkpoint must be an object")
+        if set(value) != {"run_id", "sequence", "event_hash"}:
+            raise ValueError("checkpoint has missing or unexpected fields")
         run_id = value.get("run_id")
         sequence = value.get("sequence")
         event_hash = value.get("event_hash")
@@ -126,7 +128,17 @@ def verify_event_chain(events: Iterable[Mapping[str, Any]]) -> dict[str, Any]:
                 "actual_previous_hash": event.previous_hash,
             }
 
-        expected_hash = _event_hash(event)
+        try:
+            expected_hash = _event_hash(event)
+        except (TypeError, ValueError) as exc:
+            return {
+                "valid": False,
+                "events_checked": expected_sequence - 1,
+                "run_id": run_id,
+                "failed_sequence": expected_sequence,
+                "reason": "non_canonical_event",
+                "message": str(exc),
+            }
         if not secrets.compare_digest(expected_hash, event.event_hash):
             return {
                 "valid": False,
@@ -178,10 +190,8 @@ def verify_checkpoint(
     This verifies the supplied suffix; it does not re-verify the prefix that
     existed when the checkpoint was created.
     """
-    anchor = (
-        checkpoint
-        if isinstance(checkpoint, integrity_checkpoint)
-        else integrity_checkpoint.from_mapping(checkpoint)
+    anchor = integrity_checkpoint.from_mapping(
+        checkpoint.to_dict() if isinstance(checkpoint, integrity_checkpoint) else checkpoint
     )
     if isinstance(events, (str, bytes, Mapping)):
         raise ValueError("events must be an iterable of event objects")
@@ -213,13 +223,17 @@ def verify_checkpoint(
         elif event.previous_hash != previous_hash:
             reason = "previous_hash_mismatch"
         else:
-            calculated = _event_hash(event)
-            if not secrets.compare_digest(calculated, event.event_hash):
-                reason = "event_hash_mismatch"
+            try:
+                calculated = _event_hash(event)
+            except (TypeError, ValueError):
+                reason = "non_canonical_event"
             else:
-                previous_hash = calculated
-                expected_sequence += 1
-                continue
+                if not secrets.compare_digest(calculated, event.event_hash):
+                    reason = "event_hash_mismatch"
+                else:
+                    previous_hash = calculated
+                    expected_sequence += 1
+                    continue
 
         return {
             "valid": False,

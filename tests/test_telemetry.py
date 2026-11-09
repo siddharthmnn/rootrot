@@ -185,6 +185,22 @@ class test_integrity_diagnostics(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertEqual(result["failed_sequence"], 3)
 
+    def test_chain_rejects_non_json_values_with_a_diagnostic(self):
+        changed = [dict(item) for item in self.logger.events]
+        changed[0] = dict(changed[0])
+        changed[0]["details"] = {"bad": object()}
+        result = verify_event_chain(changed)
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["reason"], "non_canonical_event")
+
+    def test_checkpoint_rejects_a_different_run(self):
+        checkpoint = create_checkpoint(self.logger.events[:2])
+        other = event_logger(run_id="other-run")
+        other.emit("test", "event.recorded")
+        result = verify_checkpoint(other.events, checkpoint)
+        self.assertFalse(result["valid"])
+        self.assertEqual(result["reason"], "run_id_mismatch")
+
     def test_empty_chain_is_valid_but_cannot_be_checkpointed(self):
         self.assertTrue(verify_event_chain([])["valid"])
         with self.assertRaises(ValueError):
