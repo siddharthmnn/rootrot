@@ -1,0 +1,145 @@
+name: rootrot ci
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+      - "feature/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rootrot-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint and compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: set up python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.15"
+          cache: pip
+
+      - name: install development tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: run ruff
+        run: |
+          ruff check .
+          ruff format --check rootrot tests scripts
+
+      - name: compile package and tests
+        run: python -m compileall -q rootrot tests scripts
+
+  tests:
+    name: tests (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+    steps:
+      - name: check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: set up python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: install package and test tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: run tests with branch coverage
+        run: coverage run --branch -m unittest discover -s tests -v
+
+      - name: enforce coverage floor
+        run: coverage report --fail-under=65
+
+      - name: write coverage report
+        if: always()
+        run: coverage xml
+
+  build:
+    name: build and install distributions
+    runs-on: ubuntu-latest
+    steps:
+      - name: check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: set up python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.15"
+          cache: pip
+
+      - name: install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: build wheel and source distribution
+        run: python -m build
+
+      - name: validate distribution metadata
+        run: |
+          python -m twine check dist/*
+          python scripts/verify_dist.py dist
+
+      - name: install and smoke-test wheel
+        shell: bash
+        run: |
+          wheel="$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+          test -n "$wheel"
+          python -m venv "$RUNNER_TEMP/rootrot-wheel"
+          "$RUNNER_TEMP/rootrot-wheel/bin/python" -m pip install --no-deps "$wheel"
+          "$RUNNER_TEMP/rootrot-wheel/bin/rootrot" --version
+          "$RUNNER_TEMP/rootrot-wheel/bin/rootrot" run --profile file_analysis > "$RUNNER_TEMP/wheel-report.json"
+          "$RUNNER_TEMP/rootrot-wheel/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert report["project"] == "rootrot"; assert report["event_log_integrity"] is True' "$RUNNER_TEMP/wheel-report.json"
+
+      - name: install and smoke-test source distribution
+        shell: bash
+        run: |
+          sdist="$(find dist -maxdepth 1 -name '*.tar.gz' -print -quit)"
+          test -n "$sdist"
+          python -m venv "$RUNNER_TEMP/rootrot-sdist"
+          "$RUNNER_TEMP/rootrot-sdist/bin/python" -m pip install "$sdist"
+          "$RUNNER_TEMP/rootrot-sdist/bin/rootrot" --version
+          "$RUNNER_TEMP/rootrot-sdist/bin/rootrot" run --profile file_analysis > "$RUNNER_TEMP/sdist-report.json"
+          "$RUNNER_TEMP/rootrot-sdist/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert report["project"] == "rootrot"; assert report["event_log_integrity"] is True' "$RUNNER_TEMP/sdist-report.json"
+
+  quality-gate:
+    name: quality gate
+    if: always()
+    needs:
+      - lint
+      - tests
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: require all validation jobs to pass
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          test "$LINT_RESULT" = "success"
+          test "$TESTS_RESULT" = "success"
+          test "$BUILD_RESULT" = "success"
