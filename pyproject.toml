@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,12 +7,58 @@ name = "rootrot"
 version = "1.0.0"
 description = "An isolated malware-behaviour simulation and detection lab"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
+license = "MIT"
 dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "coverage[toml]>=7.10",
+    "ruff>=0.15",
+    "twine>=6.1",
+]
 
 [project.scripts]
 rootrot = "rootrot.cli:main"
 
+[project.urls]
+repository = "https://github.com/siddharthmnn/rootrot"
+
 [tool.setuptools.packages.find]
+where = ["."]
 include = ["rootrot*"]
 exclude = ["tests*"]
+namespaces = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.coverage.run]
+branch = true
+source = ["rootrot"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 65
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
