@@ -54,6 +54,7 @@ class test_report_rendering(unittest.TestCase):
     def test_html_report_escapes_event_and_finding_content(self):
         output = render_html_report(self.report)
         self.assertIn("rootrot run report", output)
+        self.assertIn("<th>elapsed</th>", output)
         self.assertIn("&lt;script&gt;", output)
         self.assertNotIn("<script>", output)
         self.assertNotIn("https://", output)

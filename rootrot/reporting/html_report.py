@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .common import write_text
+from ..telemetry.timeline import build_timeline
 
 
 def _display(value: Any) -> str:
@@ -32,13 +33,13 @@ def render_html_report(report: Mapping[str, Any], max_events: int = 500) -> str:
     if not isinstance(events, list):
         events = []
 
+    timeline = build_timeline(events)
     event_rows = []
-    for event in events[:max_events]:
-        if not isinstance(event, Mapping):
-            continue
+    for event in timeline[:max_events]:
         event_rows.append(
             "<tr>"
             f"<td>{_display(event.get('sequence', ''))}</td>"
+            f"<td>{_display(event.get('elapsed_ms', 0))} ms</td>"
             f"<td>{_display(event.get('timestamp', ''))}</td>"
             f"<td>{_display(event.get('source', ''))}</td>"
             f"<td>{_display(event.get('action', ''))}</td>"
@@ -46,7 +47,7 @@ def render_html_report(report: Mapping[str, Any], max_events: int = 500) -> str:
             "</tr>"
         )
     if not event_rows:
-        event_rows.append('<tr><td colspan="5" class="muted">no events were included in this report</td></tr>')
+        event_rows.append('<tr><td colspan="6" class="muted">no events were included in this report</td></tr>')
 
     finding_cards = []
     for finding in findings:
@@ -78,7 +79,7 @@ def render_html_report(report: Mapping[str, Any], max_events: int = 500) -> str:
     raw_summary = _display(dict(summary))
     run_id = _display(report.get("run_id", "unknown"))
     version = _display(report.get("version", "unknown"))
-    event_count = _display(summary.get("event_count", report.get("event_count", len(events))))
+    event_count = _display(summary.get("event_count", report.get("event_count", len(timeline))))
     finding_count = _display(summary.get("findings", {}).get("count", len(findings))
                              if isinstance(summary.get("findings", {}), Mapping)
                              else len(findings))
@@ -92,9 +93,9 @@ def render_html_report(report: Mapping[str, Any], max_events: int = 500) -> str:
     else:
         integrity_label = "not verified"
 
-    omitted = max(0, len(events) - max_events)
+    omitted = max(0, len(timeline) - max_events)
     omitted_note = (
-        f'<p class="muted">showing the first {max_events} of {len(events)} events</p>'
+        f'<p class="muted">showing the first {max_events} of {len(timeline)} events</p>'
         if omitted else ""
     )
 
@@ -150,7 +151,7 @@ def render_html_report(report: Mapping[str, Any], max_events: int = 500) -> str:
   <h2>event timeline</h2>
   {omitted_note}
   <table>
-    <thead><tr><th>seq</th><th>timestamp</th><th>source</th><th>action</th><th>severity</th></tr></thead>
+    <thead><tr><th>seq</th><th>elapsed</th><th>timestamp</th><th>source</th><th>action</th><th>severity</th></tr></thead>
     <tbody>{''.join(event_rows)}</tbody>
   </table>
 
