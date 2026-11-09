@@ -15,6 +15,12 @@ notable changes to rootrot are recorded here. entries stay under `unreleased` un
 - event filtering, jsonl import/export, timelines and hash-chain checkpoints.
 - self-contained json and html forensic reports.
 - automated ci, coverage checks, package verification and contributor tooling.
+- deterministic synthetic detection scenarios with explicit ground-truth rule labels.
+- confusion-matrix metrics, temporal-correlation mutation checks and hash-chain tamper cases.
+- seeded parser mutation fuzzing for event records and run configuration.
+- deterministic scenario replay with sha-256 event and finding digests.
+- repeatable detection, integrity-verification and event-filtering benchmarks.
+- `validate`, `replay` and `benchmark` command line workflows.
 
 ### changed
 

@@ -74,6 +74,15 @@ jobs:
       - name: enforce coverage floor
         run: coverage report --fail-under=65
 
+      - name: run synthetic detection validation
+        run: python -m rootrot validate --seed 1337 --fuzz-cases 250
+
+      - name: verify deterministic scenario replay
+        run: python -m rootrot replay --scenario multi_stage_chain --repeat 3
+
+      - name: benchmark validation pipeline
+        run: python -m rootrot benchmark --sizes 100,1000 --iterations 2
+
       - name: write coverage report
         if: always() && steps.install.outcome == 'success'
         run: coverage xml
@@ -113,6 +122,8 @@ jobs:
           "$RUNNER_TEMP/rootrot-wheel/bin/python" -m pip install --no-deps "$wheel"
           "$RUNNER_TEMP/rootrot-wheel/bin/rootrot" --version
           "$RUNNER_TEMP/rootrot-wheel/bin/rootrot" run --profile file_analysis > "$RUNNER_TEMP/wheel-report.json"
+          "$RUNNER_TEMP/rootrot-wheel/bin/rootrot" validate --fuzz-cases 20 > "$RUNNER_TEMP/wheel-validation.json"
+          "$RUNNER_TEMP/rootrot-wheel/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert report["passed"] is True' "$RUNNER_TEMP/wheel-validation.json"
           "$RUNNER_TEMP/rootrot-wheel/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert report["project"] == "rootrot"; assert report["event_log_integrity"] is True' "$RUNNER_TEMP/wheel-report.json"
 
       - name: install and smoke-test source distribution
@@ -124,6 +135,8 @@ jobs:
           "$RUNNER_TEMP/rootrot-sdist/bin/python" -m pip install "$sdist"
           "$RUNNER_TEMP/rootrot-sdist/bin/rootrot" --version
           "$RUNNER_TEMP/rootrot-sdist/bin/rootrot" run --profile file_analysis > "$RUNNER_TEMP/sdist-report.json"
+          "$RUNNER_TEMP/rootrot-sdist/bin/rootrot" validate --fuzz-cases 20 > "$RUNNER_TEMP/sdist-validation.json"
+          "$RUNNER_TEMP/rootrot-sdist/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert report["passed"] is True' "$RUNNER_TEMP/sdist-validation.json"
           "$RUNNER_TEMP/rootrot-sdist/bin/python" -c 'import json,sys; report=json.load(open(sys.argv[1], encoding="utf-8")); assert report["project"] == "rootrot"; assert report["event_log_integrity"] is True' "$RUNNER_TEMP/sdist-report.json"
 
   quality-gate:
