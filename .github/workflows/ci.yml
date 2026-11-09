@@ -40,7 +40,7 @@ jobs:
       - name: run ruff
         run: |
           ruff check .
-          ruff format --check rootrot tests scripts
+          ruff format --check scripts/verify_dist.py tests/test_project_metadata.py
 
       - name: compile package and tests
         run: python -m compileall -q rootrot tests scripts

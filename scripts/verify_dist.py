@@ -61,16 +61,10 @@ def verify_sdist(path: Path) -> list[str]:
         "LICENSE",
         *_REQUIRED_PACKAGE_FILES,
     }
-    present_suffixes = {
-        name.split("/", 1)[-1]
-        for name in names
-        if "/" in name
-    }
+    present_suffixes = {name.split("/", 1)[-1] for name in names if "/" in name}
     missing = sorted(required_suffixes - present_suffixes)
     if missing:
-        problems.append(
-            "source distribution is missing required files: " + ", ".join(missing)
-        )
+        problems.append("source distribution is missing required files: " + ", ".join(missing))
     return problems
 
 

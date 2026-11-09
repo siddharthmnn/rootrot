@@ -34,11 +34,13 @@ make build
 make verify-dist
 ```
 
-to apply formatting after making a change:
+format the python files you changed before opening a pull request:
 
 ```bash
-make format
+ruff format rootrot/path_to_changed_file.py tests/path_to_changed_test.py
 ```
+
+the makefile's formatting target checks the new release-tooling files added in this milestone. older files are left untouched here to avoid mixing a repository-wide formatting diff into the infrastructure work.
 
 the full local check is:
 

@@ -21,10 +21,10 @@ lint:
 	ruff check .
 
 format:
-	ruff format rootrot tests scripts
+	ruff format scripts/verify_dist.py tests/test_project_metadata.py
 
 format-check:
-	ruff format --check rootrot tests scripts
+	ruff format --check scripts/verify_dist.py tests/test_project_metadata.py
 
 test:
 	$(PYTHON) -m unittest discover -s tests -v

@@ -9,9 +9,7 @@ class test_project_metadata(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         project_root = Path(__file__).resolve().parents[1]
-        cls.metadata = tomllib.loads(
-            (project_root / "pyproject.toml").read_text(encoding="utf-8")
-        )
+        cls.metadata = tomllib.loads((project_root / "pyproject.toml").read_text(encoding="utf-8"))
 
     def test_python_floor_matches_the_supported_runtime(self):
         project = self.metadata["project"]
