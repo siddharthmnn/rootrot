@@ -2,6 +2,7 @@
 
 import unittest
 
+from rootrot.detection_engine.rules import build_default_rules
 from rootrot.telemetry.integrity import verify_event_chain
 from rootrot.validation.metrics import evaluate_detection_scenarios
 from rootrot.validation.mutations import (
@@ -36,13 +37,7 @@ class test_validation_scenarios(unittest.TestCase):
             get_scenario("not-a-scenario")
 
     def test_scenario_labels_are_known_detection_rule_ids(self):
-        known = {
-            item["rule_id"]
-            for item in __import__(
-                "rootrot.detection_engine.rules",
-                fromlist=["build_default_rules"],
-            ).build_default_rules()
-        }
+        known = {rule.rule_id for rule in build_default_rules()}
         for item in list_scenarios():
             with self.subTest(scenario=item["scenario_id"]):
                 self.assertTrue(set(item["expected_rule_ids"]).issubset(known))

@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help install-dev lint format format-check test coverage build verify-dist check clean
+.PHONY: help install-dev lint format format-check test coverage validate replay benchmark build verify-dist check clean
 
 help:
 	@echo "install-dev  install rootrot and development tools"
@@ -9,6 +9,9 @@ help:
 	@echo "format-check check formatting without changing files"
 	@echo "test         run the unittest suite"
 	@echo "coverage     run tests and enforce the coverage floor"
+	@echo "validate     run synthetic detection and parser validation"
+	@echo "replay       replay the multi-stage validation scenario"
+	@echo "benchmark    benchmark detection and telemetry operations"
 	@echo "build        build wheel and source distribution"
 	@echo "verify-dist  inspect distribution contents"
 	@echo "check        run the full local quality check"
@@ -33,6 +36,15 @@ coverage:
 	coverage run --branch -m unittest discover -s tests -v
 	coverage report --fail-under=65
 	coverage html
+
+validate:
+	$(PYTHON) -m rootrot validate
+
+replay:
+	$(PYTHON) -m rootrot replay --scenario multi_stage_chain --repeat 3
+
+benchmark:
+	$(PYTHON) -m rootrot benchmark --sizes 100,1000,10000 --iterations 3
 
 build:
 	rm -rf build dist

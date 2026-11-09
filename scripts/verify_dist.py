@@ -13,6 +13,13 @@ _REQUIRED_PACKAGE_FILES = {
     "rootrot/__main__.py",
     "rootrot/cli.py",
     "rootrot/lab.py",
+    "rootrot/validation/__init__.py",
+    "rootrot/validation/scenarios.py",
+    "rootrot/validation/metrics.py",
+    "rootrot/validation/replay.py",
+    "rootrot/validation/mutations.py",
+    "rootrot/validation/fuzz.py",
+    "rootrot/validation/benchmark.py",
 }
 _FORBIDDEN_PARTS = {
     ".git",

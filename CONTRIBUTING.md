@@ -32,6 +32,9 @@ make test
 make coverage
 make build
 make verify-dist
+make validate
+make replay
+make benchmark
 ```
 
 format the python files you changed before opening a pull request:
@@ -62,6 +65,18 @@ coverage html
 ```
 
 the current coverage floor is 65%. raise it when the suite has enough meaningful coverage to justify a higher threshold; don't add tests that only exercise lines without checking behaviour.
+
+## detection validation
+
+the validation commands use synthetic event sequences with explicit expected rule ids. the reported precision, recall and false-positive rate are regression metrics for that synthetic corpus only; they are not measurements of real-world malware detection performance.
+
+```bash
+rootrot validate --seed 1337 --fuzz-cases 250
+rootrot replay --scenario multi_stage_chain --repeat 3
+rootrot benchmark --sizes 100,1000,10000 --iterations 3
+```
+
+the validation run checks detection labels, hash-chain mutations, temporal-correlation invariants and bounded parser fuzz cases. replay compares stable event and finding digests. the benchmark reports timings for detection, integrity verification and event filtering; it intentionally does not enforce a wall-clock threshold.
 
 ## package build
 
