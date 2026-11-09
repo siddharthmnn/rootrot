@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-from typing import Any
+from typing import Any, Callable
 
 from .core.schemas import event_record, utc_now
 
@@ -23,10 +23,17 @@ def _canonical(data: dict[str, Any]) -> bytes:
 class event_logger:
     """store structured events in memory and link each one to the event before it."""
 
-    def __init__(self, run_id: str | None = None) -> None:
+    def __init__(
+        self,
+        run_id: str | None = None,
+        clock: Callable[[], str] | None = None,
+    ) -> None:
         self.run_id = run_id or secrets.token_hex(12)
         if not isinstance(self.run_id, str) or not self.run_id.strip():
             raise ValueError("run_id must be a non-empty string")
+        if clock is not None and not callable(clock):
+            raise TypeError("clock must be a callable that returns an iso 8601 timestamp")
+        self._clock = clock or utc_now
         self.events: list[dict[str, Any]] = []
         self._previous_hash = "0" * 64
 
@@ -45,7 +52,7 @@ class event_logger:
         payload = event_record(
             run_id=self.run_id,
             sequence=len(self.events) + 1,
-            timestamp=utc_now(),
+            timestamp=self._clock(),
             source=source,
             action=action,
             severity=severity,
